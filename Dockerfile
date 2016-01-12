@@ -20,4 +20,4 @@ COPY LICENSE /home/craftengine/craftengine/LICENSE
 COPY craftengine /home/craftengine/craftengine
 COPY src /home/craftengine
 
-CMD python3 __main__.py
+CMD python3 -u __main__.py

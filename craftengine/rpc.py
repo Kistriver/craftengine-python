@@ -16,8 +16,8 @@ logger.setLevel("CRITICAL")
 
 
 class Rpc(object):
-    STREAMIN = 0
-    STREAMOUT = 1
+    STREAMIN = select.EPOLLIN
+    STREAMOUT = select.EPOLLOUT
     streamst = STREAMIN
 
     def __init__(self, server_address, token):
@@ -53,7 +53,6 @@ class Rpc(object):
         self.async_exec().kernel.auth(*self.token)
 
         try:
-            # TODO: Fix stdout/stdin blocking
             while self.alive:
                 events = self.epoll.poll(1)
                 for fileno, event in events:
@@ -74,7 +73,6 @@ class Rpc(object):
         self.close()
 
     def epollin(self):
-        logger.debug("IN")
         try:
             data = self.serializer.decode(self.socket)
             logger.debug(data)
@@ -95,7 +93,6 @@ class Rpc(object):
         self.stream(self.STREAMOUT)
 
     def epollout(self):
-        logger.debug("OUT")
         try:
             while len(self._responses) > 0:
                 r = self._responses[0]
@@ -115,14 +112,8 @@ class Rpc(object):
     def stream(self, sttype):
         st = self.streamst
         self.streamst = sttype
-        if sttype == self.STREAMIN:
-            ep = select.EPOLLIN
-        elif sttype == self.STREAMOUT:
-            ep = select.EPOLLOUT
-        else:
-            raise TypeError("Unexpected stream type")
         try:
-            self.epoll.modify(self.socket.fileno(), ep)
+            self.epoll.modify(self.socket.fileno(), sttype)
         except OSError:
             self.close()
         return st
