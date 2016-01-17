@@ -8,7 +8,7 @@ build:
 	cp Dockerfile Dockerfile.tmp
 	sed -i "s|##CE_VER##|$(CE_VER)|" Dockerfile.tmp
 	docker build -t kistriver/ce-python:$(CE_VER) -f Dockerfile.tmp .
-	docker tag kistriver/ce-python:$(CE_VER) kistriver/ce-python
+	docker tag -f kistriver/ce-python:$(CE_VER) kistriver/ce-python
 	rm -f Dockerfile.tmp VERSION.tmp
 
 clean:

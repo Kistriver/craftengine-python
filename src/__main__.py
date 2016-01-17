@@ -12,9 +12,10 @@ from craftengine.rpc import Rpc
 
 logging.basicConfig(format="[%(threadName)s][%(asctime)-15s] %(message)s")
 logger = logging.getLogger("craftengine")
-logger.setLevel("DEBUG")
+#logger.setLevel("DEBUG")
 
 rpc = None
+
 
 def main():
     global rpc
@@ -32,7 +33,15 @@ def main():
     logger.debug("Connecting to server...")
 
     rpc.bind("test", lambda: "CLI: " + str(time.time()))
+    rpc.bind("event.callback", lambda name, data: None)
 
+    rpc.sync_exec.event.register("test", "test")
+    x = 10000
+    b = time.time()
+    for i in range(x):
+        rpc.async_exec().event.initiate("test")
+    e = time.time()
+    print("requests: %i | rps: %0.3f" % (x, x/(e-b)))
     while True:
         try:
             print(rpc.sync_exec.kernel.env())
@@ -40,6 +49,7 @@ def main():
             print(traceback.format_list(e.tb))
             print(e.exc + ":", e.value)
         time.sleep(2)
+
 
 def exit(*args, **kwargs):
     global rpc
