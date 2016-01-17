@@ -16,6 +16,9 @@ logger.setLevel("CRITICAL")
 
 
 class Rpc(object):
+    RECONN_TIMES = 12
+    RECONN_DELAY = 5
+
     STREAMIN = select.EPOLLIN
     STREAMOUT = select.EPOLLOUT
     streamst = STREAMIN
@@ -45,7 +48,13 @@ class Rpc(object):
 
     def serve(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect(self.server_address)
+        for _ in range(self.RECONN_TIMES):
+            try:
+                self.socket.connect(self.server_address)
+                break
+            except ConnectionRefusedError:
+                logger.debug("Trying to connect...")
+                time.sleep(self.RECONN_DELAY)
         self.socket.setblocking(False)
         self.epoll.register(self.socket.fileno(), select.EPOLLIN)
         self._ready = True
@@ -140,6 +149,10 @@ class Rpc(object):
         if sync:
             while identificator not in self._sync.keys() and self.alive:
                 time.sleep(0.001)
+
+            if not self.alive:
+                raise KernelException("Exited")
+
             r = self._sync[identificator]
             if isinstance(r, Exception):
                 raise r
