@@ -11,13 +11,9 @@ apt-get update && \
 apt-get upgrade -y && \
 apt-get install -y python3 python3-dev python3-pip
 
-COPY requirements.txt /home/craftengine/craftengine/requirements.txt
 WORKDIR /home/craftengine
-RUN pip3 install -r craftengine/requirements.txt
+COPY libs.tmp /usr/lib/ce-deps
+COPY build.tmp /usr/lib/ce-deps/pycraftengine
+RUN pip3 install -r /usr/lib/ce-deps/pycraftengine/requirements.txt
 
-COPY VERSION.tmp /home/craftengine/craftengine/VERSION
-COPY LICENSE /home/craftengine/craftengine/LICENSE
-COPY craftengine /home/craftengine/craftengine
-COPY src /home/craftengine
-
-CMD python3 -u __main__.py
+CMD PYTHONPATH="/usr/lib/ce-deps/":"${PYTHONPATH}" python3 -u __main__.py

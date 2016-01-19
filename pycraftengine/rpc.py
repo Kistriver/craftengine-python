@@ -7,7 +7,7 @@ import socket
 import logging
 import time
 import traceback
-from .ddp import DdpSocket
+from ddp import DdpSocket
 
 from .exceptions import KernelException
 

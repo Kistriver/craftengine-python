@@ -1,5 +1,3 @@
-**.pyc
-**/__pycache__
-.idea/
-craftengine/ddp/
-**.tmp
+*.pyc
+*/__pycache__
+*.tmp
