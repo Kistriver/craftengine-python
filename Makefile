@@ -3,6 +3,7 @@
 CE_VER := $(shell git describe --always --tag)
 
 build:
+	-rm -rf build.tmp
 	cp -R pycraftengine build.tmp
 	cp LICENSE build.tmp/LICENSE
 	cp requirements.txt build.tmp/requirements.txt
