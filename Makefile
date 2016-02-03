@@ -10,7 +10,7 @@ build:
 	echo $(CE_VER) > build.tmp/VERSION
 
 docker: build
-	if ! [ -e libs.tmp/ddp ]; then git clone git@bitbucket.org:Kistriver/darkdist-protocol.git libs.tmp/ddp; fi
+	if ! [ -e libs.tmp/ddp ]; then git clone git@git.kistriver.com:kistriver/ddp.git libs.tmp/ddp; fi
 	cp Dockerfile Dockerfile.tmp
 	sed -i "s|##CE_VER##|$(CE_VER)|" Dockerfile.tmp
 	docker build -t kistriver/ce-python:$(CE_VER) -f Dockerfile.tmp .
