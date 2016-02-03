@@ -7,7 +7,7 @@ import socket
 import logging
 import time
 import traceback
-from .ddp import DdpSocket
+from ddp import DdpSocket
 
 from .exceptions import KernelException
 
@@ -16,6 +16,9 @@ logger.setLevel("CRITICAL")
 
 
 class Rpc(object):
+    RECONN_TIMES = 12
+    RECONN_DELAY = 5
+
     STREAMIN = select.EPOLLIN
     STREAMOUT = select.EPOLLOUT
     streamst = STREAMIN
@@ -45,12 +48,18 @@ class Rpc(object):
 
     def serve(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect(self.server_address)
+        for _ in range(self.RECONN_TIMES):
+            try:
+                self.socket.connect(self.server_address)
+                break
+            except ConnectionRefusedError:
+                logger.debug("Trying to connect...")
+                time.sleep(self.RECONN_DELAY)
         self.socket.setblocking(False)
         self.epoll.register(self.socket.fileno(), select.EPOLLIN)
         self._ready = True
 
-        self.async_exec().kernel.auth(*self.token)
+        self.async_exec()("kernel").auth(*self.token)
 
         try:
             while self.alive:
@@ -76,8 +85,8 @@ class Rpc(object):
         try:
             data = self.serializer.decode(self.socket)
             logger.debug(data)
-            if len(data) == 4:
-                response = self._request(data)
+            if len(data) == 5:
+                response = self._request(data[1:])
                 if response is None:
                     return
                 else:
@@ -118,12 +127,13 @@ class Rpc(object):
             self.close()
         return st
 
-    def _exec(self, method, args=None, kwargs=None, callback=None, sync=None):
+    def _exec(self, service, method, args=None, kwargs=None, callback=None, sync=None):
         args = () if args is None else args
         kwargs = {} if kwargs is None else kwargs
-        identificator = None if callback is None else time.time()
+        identificator = None if callback is None else "%s:%s" % (service, time.time())
         sync = False if sync is None else sync
         request = [
+            service,
             method,
             args,
             kwargs,
@@ -140,6 +150,10 @@ class Rpc(object):
         if sync:
             while identificator not in self._sync.keys() and self.alive:
                 time.sleep(0.001)
+
+            if not self.alive:
+                raise KernelException("Exited")
+
             r = self._sync[identificator]
             if isinstance(r, Exception):
                 raise r
@@ -159,13 +173,13 @@ class Rpc(object):
         def eh(err, identificator):
             self._sync[identificator] = KernelException(*err)
 
-        return Proxy(self, callback=(cb, eh), sync=True)
+        return lambda s: Proxy(self, service=s, callback=(cb, eh), sync=True)
 
     def async_exec(self, callback=None):
         while not self._ready:
             time.sleep(0.01)
 
-        return Proxy(self, callback=callback, sync=False)
+        return lambda s: Proxy(self, service=s, callback=callback, sync=False)
 
     def _request(self, data):
         identificator = None
@@ -226,19 +240,19 @@ class Rpc(object):
 
 
 class Proxy:
-    def __init__(self, rpc, name=None, callback=None, sync=None):
+    def __init__(self, rpc, service=None, name=None, callback=None, sync=None):
         self.rpc = rpc
         self.name = name
         self.callback = callback
         self.sync = sync
+        self.service = service
 
     def __getattr__(self, name):
         nn = name if self.name is None else "%s.%s" % (self.name, name)
-        logger.debug("Proxy get: %s" % nn)
-        return Proxy(self.rpc, name=nn, callback=self.callback, sync=self.sync)
+        return Proxy(self.rpc, service=self.service, name=nn, callback=self.callback, sync=self.sync)
 
     def __call__(self, *args, **kwargs):
         if self.name is None:
             raise ValueError("Proxy class is not callable")
-        logger.debug("Proxy call: %s" % self.name)
-        return self.rpc._exec(self.name, args, kwargs, callback=self.callback, sync=self.sync)
+        logger.debug("Proxy call: %s:%s" % (self.service, self.name))
+        return self.rpc._exec(self.service, self.name, args, kwargs, callback=self.callback, sync=self.sync)
