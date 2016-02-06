@@ -57,9 +57,12 @@ class Rpc(object):
                 time.sleep(self.RECONN_DELAY)
         self.socket.setblocking(False)
         self.epoll.register(self.socket.fileno(), select.EPOLLIN)
-        self._ready = True
 
-        self.async_exec()("kernel").auth(*self.token)
+        def cb(d, id):
+            self._ready = True
+        self._ready = True
+        self.async_exec(callback=cb)("kernel").auth(*self.token)
+        self._ready = False
 
         try:
             while self.alive:
@@ -190,7 +193,7 @@ class Rpc(object):
             function.__globals__["request"] = self
             data = function(*args, **kwargs)
         except Exception as e:
-            error = ["%s.%s" % (getattr(e, "__module__", "__built_in__"), e.__class__.__name__), str(e), traceback.extract_tb(e.__traceback__)]
+            error = ["%s.%s" % (getattr(e, "__module__", "__built_in__"), e.__class__.__name__), str(e), traceback.format_exc()]
             data = []
             logger.exception(e)
         else:
