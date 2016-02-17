@@ -238,10 +238,8 @@ class Rpc(object):
         for fn in fileno:
             request = [
                 "connect",
-                [
-                    self.service,
-                    self.instance,
-                ],
+                self.service,
+                self.instance,
                 self.token,
                 self.params,
             ]
